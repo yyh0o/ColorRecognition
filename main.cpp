@@ -37,16 +37,24 @@ using namespace std;
 int main(int argc, char** atgv){
     namedWindow("Control", CV_WINDOW_AUTOSIZE);
 
-    int iLowH = 100;
-    int iHighH = 140;
+    int iLowH = 0;
+    int iHighH = 57;
 
-    int iLowS = 90;
-    int iHighS = 255;
+    int iLowS = 28;
+    int iHighS = 104;
 
-    int iLowV = 90;
+    int iLowV = 250;
     int iHighV = 255;
 
+    int talpha = 0;
+    double alpha = (talpha + 10)/10; //控制对比度
+    int beta = 0; //控制亮度
+
     //Create trackbars in "Control" window
+    cvCreateTrackbar("alpha", "Control", &talpha, 20); //alpha (10 - 30)
+    cvCreateTrackbar("beta", "Control", &beta, 100); //beta (0 - 100)
+
+
     cvCreateTrackbar("LowH", "Control", &iLowH, 179); //Hue (0 - 179)
     cvCreateTrackbar("HighH", "Control", &iHighH, 179);
 
@@ -61,7 +69,17 @@ int main(int argc, char** atgv){
         Mat imgOriginal;
         imgOriginal = imread("../infantry.jpg");
 
-        imshow("Control",imgOriginal); //在control窗口显示imgOriginal图片
+        Mat new_image = imgOriginal;
+       // new_image(i,j) = alpha*image(i,j) + beta
+        for( int y = 0; y < imgOriginal.rows; y++ )    {
+            for( int x = 0; x < imgOriginal.cols; x++ )        {
+                for( int c = 0; c < 3; c++ )            {
+                    new_image.at<Vec3b>(y,x)[c] = saturate_cast<uchar>( alpha*( imgOriginal.at<Vec3b>(y,x)[c] ) - beta );
+                }
+            }
+        }
+
+//        imshow("Control",imgOriginal); //在control窗口显示imgOriginal图片
 
         Mat imgHSV;
         vector<Mat> hsvSplit;
@@ -73,15 +91,15 @@ int main(int argc, char** atgv){
         Mat imgThresholded;
         inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
 
-//        //开操作 (去除一些噪点)
-//        Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));
+        //开操作 (去除一些噪点)
+        Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));
 //        morphologyEx(imgThresholded, imgThresholded, MORPH_OPEN, element);
-//
-//        //闭操作 (连接一些连通域)
-//        morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, element);
+
+        //闭操作 (连接一些连通域)
+        morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, element);
 
         imshow("Thresholded Image", imgThresholded); //show the thresholded image
-        imshow("Original", imgOriginal); //show the original image
+        imshow("Control", imgOriginal); //show the original image
 
         char key = (char) waitKey(300);
         if(key == 27)
